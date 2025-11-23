@@ -35,6 +35,16 @@ export class DurableCounter extends DurableObject<Env> {
 		};
 	}
 
+	async status(threshold: number) {
+		const state = await this.existing();
+		const stepsRemaining = threshold - state.counter
+		return {
+			counter: state.counter,
+			balance: state.balance,
+			stepsRemaining: stepsRemaining,
+		}
+	}
+
 	async increment(amount: bigint, threshold: number = 10): Promise<DurableCounterInstance> {
 		const state = await this.existing();
 

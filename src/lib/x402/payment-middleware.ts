@@ -1,15 +1,11 @@
 import type { UseFacilitator } from "./use-facilitator.type.js";
 import type { RequestToPaymentStrategy } from "./request-to-payment-strategy.type.js";
 import type { PriceTagRequirementsBase } from "./price-tag.js";
-import type {
-  FacilitatorConfig,
-  PaymentMiddlewareConfig,
-  PaywallConfig,
-  Resource,
-} from "x402/types";
+import type { FacilitatorConfig, Network, PaymentMiddlewareConfig, PaywallConfig, Resource } from 'x402/types';
 import { useFacilitator } from "x402/verify";
 import { priceTagsToRequirements } from "./price-tag.js";
 import { IncomingPayment } from "./incoming-payment.js";
+import type { SupportedNetwork } from '../with-payment.js';
 
 export type { PaymentMiddlewareOpts };
 export { PaymentMiddleware };
@@ -26,7 +22,7 @@ type PaymentMiddlewareOpts<TRequest> = {
    */
   strategy: RequestToPaymentStrategy<TRequest>;
   /** The facilitator configuration. */
-  facilitator?: FacilitatorConfig;
+  facilitator: Record<SupportedNetwork, FacilitatorConfig>;
   /** The paywall configuration. */
   paywall?: PaywallConfig;
   /** The payment middleware configuration. */
@@ -62,7 +58,7 @@ type PaymentMiddlewareOpts<TRequest> = {
  * @template TRequest The type of the request object.
  */
 class PaymentMiddleware<TRequest> {
-  readonly #facilitator: UseFacilitator;
+  readonly #facilitator: Record<SupportedNetwork, FacilitatorConfig>;
 
   readonly #resourceFromRequest: RequestToPaymentStrategy<TRequest>["resource"];
   readonly #paymentFromRequest: RequestToPaymentStrategy<TRequest>["paymentPayload"];
@@ -72,7 +68,7 @@ class PaymentMiddleware<TRequest> {
   readonly #requirementsBase: PriceTagRequirementsBase;
 
   constructor(opts: PaymentMiddlewareOpts<TRequest>) {
-    this.#facilitator = useFacilitator(opts.facilitator);
+    this.#facilitator = opts.facilitator;
     this.#resourceFromRequest = opts.strategy.resource;
     this.#canRenderPaywall = opts.strategy.canRenderPaywall;
     this.#paymentFromRequest = opts.strategy.paymentPayload;
@@ -94,6 +90,10 @@ class PaymentMiddleware<TRequest> {
   get requirementsBase(): PriceTagRequirementsBase {
     return this.#requirementsBase;
   }
+
+	paymentFromRequest(request: TRequest) {
+		return this.#paymentFromRequest(request);
+	}
 
   /**
    * Get the payment context for the incoming request.

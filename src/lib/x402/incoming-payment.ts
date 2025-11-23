@@ -1,10 +1,11 @@
-import type { PaymentPayload, PaymentRequirements } from "x402/types";
+import type { FacilitatorConfig, Network, PaymentPayload, PaymentRequirements } from 'x402/types';
 import type { PriceTag } from "./price-tag.js";
-import type { UseFacilitator } from "./use-facilitator.type.js";
 import type { Settlement } from "./verified-payment.js";
 import { findMatchingPaymentRequirements } from "x402/shared";
 import { VerifiedPayment } from "./verified-payment.js";
 import { X402Error } from "./errors.js";
+import type { SupportedNetwork } from '../with-payment.js';
+import { useFacilitator } from 'x402/verify';
 
 export type { PaymentRequirementsBuilderFn };
 export { IncomingPayment };
@@ -27,8 +28,7 @@ class IncomingPayment {
   readonly #payload: PaymentPayload | undefined;
 
   readonly #paymentRequirementsBuilder: PaymentRequirementsBuilderFn;
-  readonly #settleFn: UseFacilitator["settle"];
-  readonly #verifyFn: UseFacilitator["verify"];
+  readonly #facilitator: Record<SupportedNetwork, FacilitatorConfig>
 
   #verifiedPayment: VerifiedPayment | undefined;
 
@@ -41,15 +41,14 @@ class IncomingPayment {
    */
   constructor(
     payload: PaymentPayload | undefined,
-    facilitator: UseFacilitator,
+    facilitator: Record<SupportedNetwork, FacilitatorConfig>,
     paymentRequirementsBuilder: (
       priceTags: Array<PriceTag>,
     ) => Array<PaymentRequirements>,
   ) {
     this.#payload = payload;
     this.#paymentRequirementsBuilder = paymentRequirementsBuilder;
-    this.#settleFn = facilitator.settle;
-    this.#verifyFn = facilitator.verify;
+		this.#facilitator = facilitator
     this.#verifiedPayment = undefined;
   }
 
@@ -73,7 +72,6 @@ class IncomingPayment {
     priceTags: Array<PriceTag>,
   ): Promise<VerifiedPayment> {
     const paymentRequirements = this.#paymentRequirementsBuilder(priceTags);
-		console.log('p.0', paymentRequirements);
     if (!this.#payload) {
       // TODO Paywall?
       throw new X402Error("X-PAYMENT header is required", paymentRequirements);
@@ -88,7 +86,10 @@ class IncomingPayment {
         paymentRequirements,
       );
     }
-    const verification = await this.#verifyFn(this.#payload, selected);
+		const network = this.#payload.network as SupportedNetwork;
+		const facilitatorConfig = this.#facilitator[network];
+		const facilitator = useFacilitator(facilitatorConfig)
+    const verification = await facilitator.verify(this.#payload, selected);
     if (!verification.isValid) {
       throw new X402Error(
         verification.invalidReason ?? "Payment verification failed",
@@ -96,11 +97,12 @@ class IncomingPayment {
         verification.payer,
       );
     }
+		const settleFn = facilitator.settle;
     return (this.#verifiedPayment = new VerifiedPayment(
       this.#payload,
       selected,
       paymentRequirements,
-      this.#settleFn,
+      settleFn,
     ));
   }
 
