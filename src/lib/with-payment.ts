@@ -38,7 +38,7 @@ export const NETWORK_PARAMS = {
 		threshold: THRESHOLD,
 		payTo: '0xad9d77FB3FB3f5d18B5937b530d698C04133B0c2',
 		chain: baseSepoliaPreconf,
-		chainTransport: http(),
+		chainTransport: http("https://rpc.ankr.com/base_sepolia/f232740bceed74a79687a13df99b79482ef87a8ff15f4a30e8ffa65e0d5e044a"),
 	},
 	base: {
 		facilitator: (a?: string, b?: string): FacilitatorConfig => {
@@ -55,7 +55,7 @@ export const NETWORK_PARAMS = {
 		threshold: THRESHOLD,
 		payTo: '0xad9d77FB3FB3f5d18B5937b530d698C04133B0c2',
 		chain: base,
-		chainTransport: http(),
+		chainTransport: http("https://rpc.ankr.com/base/f232740bceed74a79687a13df99b79482ef87a8ff15f4a30e8ffa65e0d5e044a"),
 	},
 } as const;
 
